@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>量化分析 Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0e1a;color:#e2e8f0;padding:12px;min-height:100vh}
+h1{text-align:center;font-size:20px;padding:12px 0;background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+.subtitle{text-align:center;color:#475569;font-size:11px;margin-bottom:8px}
+input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #1e293b;background:#0f172a;color:#e2e8f0;font-size:14px}
+label{font-size:11px;color:#64748b;display:block;margin-top:6px;font-weight:600}
+button{width:100%;padding:14px;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;transition:all .15s;background:linear-gradient(135deg,#38bdf8,#6366f1);color:#fff;margin-top:10px}
+button:active{transform:scale(.97)}
+.card{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:14px;margin:8px 0}
+.card-title{font-size:13px;font-weight:700;color:#38bdf8;margin-bottom:8px}
+.row{display:flex;gap:8px}.row>div{flex:1}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.result-area{display:none;background:linear-gradient(135deg,#111827,#1e1b4b);border:1px solid #312e81;border-radius:12px;padding:16px;margin:12px 0}
+.result-area.show{display:block}
+.verdict-big{font-size:28px;font-weight:900;text-align:center;padding:6px 0}
+.verdict-go{color:#22c55e}.verdict-warn{color:#eab308}.verdict-no{color:#ef4444}
+.confidence-bar{height:6px;background:#1e293b;border-radius:3px;margin:6px 0;overflow:hidden}
+.confidence-fill{height:100%;border-radius:3px;transition:width .5s}
+.metric-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1e293b;font-size:13px}
+.metric-row:last-child{border:none}
+.metric-label{color:#64748b}.metric-value{font-weight:600}
+.prob-bar{display:flex;height:28px;border-radius:6px;overflow:hidden;margin:8px 0;font-size:12px;font-weight:700}
+.prob-h{background:#22c55e;display:flex;align-items:center;justify-content:center;color:#000}
+.prob-d{background:#64748b;display:flex;align-items:center;justify-content:center;color:#fff}
+.prob-a{background:#ef4444;display:flex;align-items:center;justify-content:center;color:#fff}
+.signal-list{margin:6px 0}
+.signal-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.signal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:#22c55e}.dot-red{background:#ef4444}.dot-yellow{background:#eab308}
+.kelly-box{background:#0f172a;border:1px solid #312e81;border-radius:8px;padding:10px;margin-top:8px;text-align:center}
+.kelly-val{font-size:22px;font-weight:900;color:#a78bfa}
+.settle-row{display:flex;gap:8px;margin-top:10px}
+.settle-row button{margin:0;padding:12px;font-size:13px}
+.btn-win{background:#22c55e;color:#000;flex:1}
+.btn-draw{background:#eab308;color:#000;flex:1}
+.btn-lose{background:#ef4444;color:#fff;flex:1}
+.green{color:#22c55e}.red{color:#ef4444}.yellow{color:#eab308}.blue{color:#38bdf8}.purple{color:#a78bfa}.gray{color:#64748b}
+.divider{height:1px;background:#1e293b;margin:8px 0}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px}
+.tag-go{background:#22c55e20;color:#22c55e}.tag-no{background:#ef444420;color:#ef4444}
+.tag-league{background:#38bdf820;color:#38bdf8}
+.section-hint{font-size:10px;color:#475569;margin-top:3px}
+.tabs{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+.btn-tab{background:#1e293b;color:#94a3b8;padding:10px;font-size:13px;border-radius:8px;flex:1;text-align:center;cursor:pointer;border:none}
+.btn-tab.active{background:#38bdf8;color:#000}
+.api-status{font-size:11px;padding:4px 10px;border-radius:4px;display:inline-block}
+.api-ok{background:#22c55e20;color:#22c55e}
+.api-err{background:#ef444420;color:#ef4444}
+.api-none{background:#eab30820;color:#eab308}
+.match-card{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px;margin:6px 0;cursor:pointer}
+.match-card:active{border-color:#38bdf8}
+.match-league{font-size:10px;color:#38bdf8}
+.match-teams{font-size:15px;font-weight:700;margin:4px 0;display:flex;justify-content:space-between}
+.match-time{font-size:11px;color:#64748b}
+.match-odds{display:flex;gap:6px;margin-top:4px}
+.odd-box{flex:1;background:#1e293b;border-radius:6px;padding:4px;text-align:center}
+.odd-box .odd-label{font-size:9px;color:#64748b}
+.odd-box .odd-val{font-size:14px;font-weight:700}
+.empty{text-align:center;color:#334155;font-size:13px;padding:20px}
+.history-item{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px;margin:4px 0;font-size:12px}
+.history-top{display:flex;justify-content:space-between;align-items:center}
+.history-mid{color:#64748b;margin-top:4px;font-size:11px}
+</style>
+</head>
+<body>
+
+<h1>⚽ 量化分析 <span class="tag tag-go">Pro</span></h1>
+<div class="subtitle">泊松分布 · 大小球 · 凯利公式 · 智能校准</div>
+
+<div class="tabs">
+  <button class="btn-tab active" onclick="switchTab('analyze')">📊 分析</button>
+  <button class="btn-tab" onclick="switchTab('live')">🌐 实时</button>
+  <button class="btn-tab" onclick="switchTab('records')">📋 战绩</button>
+  <button class="btn-tab" onclick="switchTab('settings')">⚙️ 设置</button>
+</div>
+
+<!-- ========== 分析 Tab ========== -->
+<div id="tab-analyze">
+<div class="card">
+  <div class="card-title">🏟️ 比赛信息</div>
+  <label>联赛</label>
+  <select id="league">
+    <option value="EPL">🏴󠁧󠁢󠁥󠁮󠁧󠁿 英超</option>
+    <option value="BUNDES">🇩🇪 德甲</option>
+    <option value="LALIGA">🇪🇸 西甲</option>
+    <option value="SERIEA">🇮🇹 意甲</option>
+    <option value="LIGUE1">🇫🇷 法甲</option>
+    <option value="OTHER">其他</option>
+  </select>
+  <div class="row">
+    <div><label>主队</label><input id="home" placeholder="阿森纳" value="阿森纳"></div>
+    <div><label>客队</label><input id="away" placeholder="利物浦" value="利物浦"></div>
+  </div>
+  <div class="row">
+    <div><label>比赛日期</label><input type="date" id="matchDate" value="2026-08-24"></div>
+    <div><label>🌤️ 天气</label><div id="weatherInfo" style="padding:10px;background:#0f172a;border-radius:6px;color:#94a3b8;font-size:12px;">加载中...</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">🎯 xG 预期进球</div>
+  <div class="row">
+    <div><label>主队 xG</label><input type="number" id="xgH" step="0.01" value="1.62"></div>
+    <div><label>客队 xG</label><input type="number" id="xgA" step="0.01" value="1.28"></div>
+  </div>
+  <div class="row">
+    <div><label>主队状态</label><input type="number" id="formH" step="0.01" value="1.05"></div>
+    <div><label>客队状态</label><input type="number" id="formA" step="0.01" value="0.98"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">💰 赔率 & 资金信号</div>
+  <div class="grid3">
+    <div><label>主胜</label><input type="number" id="oH" step="0.01" value="1.85"></div>
+    <div><label>平局</label><input type="number" id="oD" step="0.01" value="3.40"></div>
+    <div><label>客胜</label><input type="number" id="oA" step="0.01" value="4.20"></div>
+  </div>
+  <div class="row">
+    <div><label>平博主胜</label><input type="number" id="pinH" step="0.01" value="1.83"></div>
+    <div><label>必发指数</label><input type="number" id="bfIdx" step="1" value="68"></div>
+  </div>
+</div>
+
+<div class="card" style="border-color:#f59e0b;">
+  <div class="card-title">⚽ 大小球预测</div>
+  <div class="row">
+    <div><label>盘口</label><select id="ouLine"><option value="2.5">2.5</option><option value="3.0">3.0</option><option value="3.5">3.5</option></select></div>
+    <div><label>大球赔率</label><input type="number" id="ouOverOdds" step="0.01" value="1.80"></div>
+    <div><label>小球赔率</label><input type="number" id="ouUnderOdds" step="0.01" value="2.05"></div>
+  </div>
+  <div style="font-size:12px;color:#64748b;">预期总进球: <span id="expectedGoals">-</span></div>
+  <div style="margin-top:6px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;"><span>小球</span><span id="ouProbLabel">50% / 50%</span><span>大球</span></div>
+    <div style="display:flex;height:24px;border-radius:6px;overflow:hidden;font-weight:700;">
+      <div id="underBar" style="background:#64748b;display:flex;align-items:center;justify-content:center;width:50%;">50%</div>
+      <div id="overBar" style="background:#22c55e;display:flex;align-items:center;justify-content:center;color:#000;width:50%;">50%</div>
+    </div>
+  </div>
+  <div class="metric-row"><span>大球 EV</span><span class="metric-value" id="ouOverEv">-</span></div>
+  <div class="metric-row"><span>小球 EV</span><span class="metric-value" id="ouUnderEv">-</span></div>
+</div>
+
+<div class="card">
+  <div class="card-title">🏦 资金管理</div>
+  <div class="row">
+    <div><label>总资金</label><input type="number" id="bankroll" value="10000"></div>
+    <div><label>单笔风险%</label><input type="number" id="maxRisk" value="2"></div>
+  </div>
+</div>
+
+<button onclick="analyze()">🔍 执行量化分析</button>
+
+<div class="result-area" id="resultArea">
+  <div class="verdict-big" id="verdictText">✅ 上盘</div>
+  <div class="confidence-bar"><div class="confidence-fill" id="confBar" style="width:78%;"></div></div>
+  <div style="text-align:center;font-size:12px;" id="confText">置信度 78%</div>
+  <div class="divider"></div>
+  <div class="prob-bar" id="probBar">
+    <div class="prob-h" style="width:52%;">52%</div>
+    <div class="prob-d" style="width:24%;">24%</div>
+    <div class="prob-a" style="width:24%;">24%</div>
+  </div>
+  <div class="grid3" style="font-size:11px;text-align:center">
+    <div class="green" id="probH">主胜 52%</div>
+    <div class="gray" id="probD">平局 24%</div>
+    <div class="red" id="probA">客胜 24%</div>
+  </div>
+  <div class="divider"></div>
+  <div class="metric-row" id="calibrationRow" style="background:#0f172a;border-radius:4px;padding:6px;border:1px solid #22c55e30;">
+    <span class="metric-label">🔬 概率校准</span>
+    <span class="metric-value green" id="calibrationStatus">✅ 已校准</span>
+  </div>
+  <div style="font-size:10px;color:#475569;text-align:right;" id="calibrationDetail">英超/德甲专用</div>
+  <div class="metric-row"><span>xG 差值</span><span class="metric-value green" id="mXgDiff">+0.34</span></div>
+  <div class="metric-row"><span>期望值 EV</span><span class="metric-value green" id="mEv">+6.8%</span></div>
+  <div class="metric-row"><span>CLV</span><span class="metric-value green" id="mClv">+2.4%</span></div>
+  <div class="signal-list" id="signalList"></div>
+  <div class="kelly-box">
+    <div style="font-size:12px;">凯利仓位</div>
+    <div class="kelly-val" id="kellyVal">1.82%</div>
+    <div style="font-size:12px;" id="kellyAmount">建议 ¥182</div>
+  </div>
+  <div class="settle-row" id="settleRow">
+    <button class="btn-win" onclick="settle('H')">主胜 ✓</button>
+    <button class="btn-draw" onclick="settle('D')">走水</button>
+    <button class="btn-lose" onclick="settle('A')">客胜 ✗</button>
+  </div>
+</div>
+</div>
+
+<!-- ========== 实时 Tab ========== -->
+<div id="tab-live" style="display:none;">
+<div class="card">
+  <div class="card-title">🌐 实时赔率</div>
+  <div id="apiStatus" class="api-status api-none">⏳ 点击加载</div>
+  <label>联赛</label>
+  <select id="liveLeague" onchange="fetchLiveOdds()">
+    <option value="soccer_epl">英超</option>
+    <option value="soccer_germany_bundesliga">德甲</option>
+    <option value="soccer_spain_la_liga">西甲</option>
+    <option value="soccer_italy_serie_a">意甲</option>
+    <option value="soccer_france_ligue_one">法甲</option>
+  </select>
+  <div class="row" style="margin-top:8px;">
+    <button class="btn" style="background:#1e293b;color:#94a3b8;padding:10px;" onclick="fetchLiveOdds()">🔄 获取赔率</button>
+  </div>
+  <div id="refreshInfo" style="font-size:11px;color:#475569;text-align:center;padding:4px 0;"></div>
+</div>
+<div id="matchList"><div class="empty">点击上方获取比赛</div></div>
+</div>
+
+<!-- ========== 战绩 Tab ========== -->
+<div id="tab-records" style="display:none;">
+<div class="card">
+  <div class="card-title">📈 战绩统计</div>
+  <div class="row">
+    <div class="stat" style="background:#0f172a;border-radius:8px;padding:10px;text-align:center;border:1px solid #1e293b;flex:1;"><div class="stat-num" style="font-size:22px;font-weight:800;color:#38bdf8;" id="sTotal">0</div><div style="font-size:10px;color:#64748b;">总场次</div></div>
+    <div class="stat" style="background:#0f172a;border-radius:8px;padding:10px;text-align:center;border:1px solid #1e293b;flex:1;"><div class="stat-num" style="font-size:22px;font-weight:800;color:#22c55e;" id="sWin">0</div><div style="font-size:10px;color:#64748b;">命中</div></div>
+    <div class="stat" style="background:#0f172a;border-radius:8px;padding:10px;text-align:center;border:1px solid #1e293b;flex:1;"><div class="stat-num" style="font-size:22px;font-weight:800;color:#ef4444;" id="sLose">0</div><div style="font-size:10px;color:#64748b;">未中</div></div>
+  </div>
+  <div class="row">
+    <div class="stat" style="background:#0f172a;border-radius:8px;padding:10px;text-align:center;border:1px solid #1e293b;flex:1;"><div class="stat-num" style="font-size:22px;font-weight:800;color:#eab308;" id="sWR">0%</div><div style="font-size:10px;color:#64748b;">胜率</div></div>
+    <div class="stat" style="background:#0f172a;border-radius:8px;padding:10px;text-align:center;border:1px solid #1e293b;flex:1;"><div class="stat-num" style="font-size:22px;font-weight:800;color:#a78bfa;" id="sPnl">0</div><div style="font-size:10px;color:#64748b;">总盈亏</div></div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">📜 历史记录</div>
+  <div id="historyList"><div class="empty">暂无记录</div></div>
+  <button style="background:#ef4444;color:#fff;padding:12px;margin-top:8px;" onclick="clearRecords()">🗑️ 清空记录</button>
+</div>
+</div>
+
+<!-- ========== 设置 Tab ========== -->
+<div id="tab-settings" style="display:none;">
+<div class="card">
+  <div class="card-title">⚙️ 模型参数</div>
+  <label>平局修正</label><input type="number" id="cfgDrawBoost" step="0.01" value="1.08">
+  <label>凯利分数</label><input type="number" id="cfgKellyFrac" step="0.05" value="0.5">
+  <label>最低 EV %</label><input type="number" id="cfgEvThresh" step="0.5" value="3">
+  <label>最低置信度</label><input type="number" id="cfgConfThresh" step="1" value="55">
+</div>
+<div class="card">
+  <div class="card-title">📖 说明</div>
+  <div style="font-size:12px;color:#94a3b8;line-height:1.8;">
+    <p>• 泊松分布 + 大小球 + 凯利公式</p>
+    <p>• 英超/德甲自动校准</p>
+    <p>• 天气自动获取</p>
+    <p>• 数据存储在浏览器本地</p>
+  </div>
+</div>
+</div>
+
+<div style="text-align:center;color:#1e293b;font-size:10px;padding:16px 0;">量化分析 · 开源免费</div>
+
+<script>
+// ============================================================
+// 核心计算
+// ============================================================
+function poisson(k, lam) {
+  let p = Math.exp(-lam);
+  for (let i = 1; i <= k; i++) p *= lam / i;
+  return p;
+}
+
+function calcMatchProbs(lH, lA, db) {
+  let pH = 0, pD = 0, pA = 0;
+  for (let i = 0; i <= 7; i++) {
+    for (let j = 0; j <= 7; j++) {
+      let p = poisson(i, lH) * poisson(j, lA);
+      if (i > j) pH += p;
+      else if (i === j) pD += p * db;
+      else pA += p;
+    }
+  }
+  let t = pH + pD + pA;
+  return { H: pH / t, D: pD / t, A: pA / t };
+}
+
+function calcTotalProbs(lH, lA) {
+  let probs = [];
+  for (let k = 0; k <= 12; k++) {
+    let s = 0;
+    for (let i = 0; i <= k; i++) {
+      s += poisson(i, lH) * poisson(k - i, lA);
+    }
+    probs.push(s);
+  }
+  return probs;
+}
+
+function calibrate(league, p) {
+  if (!['EPL', 'BUNDES'].includes(league)) return p;
+  const map = {
+    EPL: [0.12, 0.22, 0.32, 0.42, 0.52, 0.61, 0.70, 0.79, 0.88],
+    BUNDES: [0.11, 0.21, 0.31, 0.41, 0.51, 0.60, 0.69, 0.78, 0.87]
+  };
+  const arr = map[league];
+  for (let i = 0; i < 9; i++) {
+    if (p <= 0.1 * (i + 1)) return Math.max(0.05, Math.min(0.95, arr[i]));
+  }
+  return Math.max(0.05, Math.min(0.95, p));
+}
+
+const LEAGUE_PARAMS = {
+  EPL: { homeAdv: 0.38, avgGoals: 2.72 },
+  BUNDES: { homeAdv: 0.36, avgGoals: 3.05 },
+  LALIGA: { homeAdv: 0.32, avgGoals: 2.52 },
+  SERIEA: { homeAdv: 0.30, avgGoals: 2.65 },
+  LIGUE1: { homeAdv: 0.32, avgGoals: 2.60 },
+  OTHER: { homeAdv: 0.30, avgGoals: 2.65 }
+};
+
+// ============================================================
+// 天气
+// ============================================================
+const STADIUMS = {
+  '阿森纳': { lat: 51.555, lon: -0.108 },
+  '利物浦': { lat: 53.431, lon: -2.961 },
+  '曼城': { lat: 53.483, lon: -2.200 },
+  '切尔西': { lat: 51.482, lon: -0.191 },
+  '热刺': { lat: 51.604, lon: -0.066 },
+  '拜仁': { lat: 48.219, lon: 11.625 },
+  '多特蒙德': { lat: 51.492, lon: 7.452 },
+  '皇马': { lat: 40.453, lon: -3.688 },
+  '巴萨': { lat: 41.381, lon: 2.123 }
+};
+
+async function fetchWeather(lat, lon, date) {
+  try {
+    let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`;
+    let res = await fetch(url);
+    let data = await res.json();
+    if (data.daily) {
+      return {
+        temp: data.daily.temperature_2m_max[0],
+        precip: data.daily.precipitation_sum[0],
+        wind: data.daily.wind_speed_10m_max[0],
+        rainy: data.daily.precipitation_sum[0] > 1
+      };
+    }
+  } catch (e) {}
+  return null;
+}
+
+// ============================================================
+// Tab 切换
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
+  const tabs = ['analyze', 'live', 'records', 'settings'];
+  const idx = tabs.indexOf(tab);
+  if (idx >= 0) document.querySelectorAll('.btn-tab')[idx].classList.add('active');
+  document.getElementById('tab-analyze').style.display = tab === 'analyze' ? 'block' : 'none';
+  document.getElementById('tab-live').style.display = tab === 'live' ? 'block' : 'none';
+  document.getElementById('tab-records').style.display = tab === 'records' ? 'block' : 'none';
+  document.getElementById('tab-settings').style.display = tab === 'settings' ? 'block' : 'none';
+  if (tab === 'records') renderRecords();
+  if (tab === 'live') fetchLiveOdds();
+}
+
+// ============================================================
+// 实时赔率（模拟+真实混合）
+// ============================================================
+async function fetchLiveOdds() {
+  const listEl = document.getElementById('matchList');
+  listEl.innerHTML = '<div class="empty">⏳ 加载中...</div>';
+  try {
+    // 由于CORS限制，直接使用模拟数据
+    // 真实场景需要后端代理
+    loadMockMatches();
+    document.getElementById('refreshInfo').innerHTML = '📋 模拟数据 (真实API需后端代理)';
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty" style="color:#ef4444;">❌ 加载失败</div>';
+  }
+}
+
+function loadMockMatches() {
+  const listEl = document.getElementById('matchList');
+  listEl.innerHTML = `
+    <div class="match-card" onclick="loadMatch('阿森纳','利物浦',1.85,3.40,4.20)">
+      <div class="match-league">🏴󠁧󠁢󠁥󠁮󠁧󠁿 英超</div>
+      <div class="match-teams"><span>阿森纳</span><span>利物浦</span></div>
+      <div class="match-odds">
+        <div class="odd-box"><div class="odd-label">主</div><div class="odd-val green">1.85</div></div>
+        <div class="odd-box"><div class="odd-label">平</div><div class="odd-val yellow">3.40</div></div>
+        <div class="odd-box"><div class="odd-label">客</div><div class="odd-val red">4.20</div></div>
+      </div>
+    </div>
+    <div class="match-card" onclick="loadMatch('拜仁','多特蒙德',1.72,3.80,4.50)">
+      <div class="match-league">🇩🇪 德甲</div>
+      <div class="match-teams"><span>拜仁</span><span>多特蒙德</span></div>
+      <div class="match-odds">
+        <div class="odd-box"><div class="odd-label">主</div><div class="odd-val green">1.72</div></div>
+        <div class="odd-box"><div class="odd-label">平</div><div class="odd-val yellow">3.80</div></div>
+        <div class="odd-box"><div class="odd-label">客</div><div class="odd-val red">4.50</div></div>
+      </div>
+    </div>
+    <div class="match-card" onclick="loadMatch('曼城','切尔西',1.55,4.20,5.80)">
+      <div class="match-league">🏴󠁧󠁢󠁥󠁮󠁧󠁿 英超</div>
+      <div class="match-teams"><span>曼城</span><span>切尔西</span></div>
+      <div class="match-odds">
+        <div class="odd-box"><div class="odd-label">主</div><div class="odd-val green">1.55</div></div>
+        <div class="odd-box"><div class="odd-label">平</div><div class="odd-val yellow">4.20</div></div>
+        <div class="odd-box"><div class="odd-label">客</div><div class="odd-val red">5.80</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function loadMatch(home, away, hOdds, dOdds, aOdds) {
+  document.getElementById('home').value = home;
+  document.getElementById('away').value = away;
+  document.getElementById('oH').value = hOdds;
+  document.getElementById('oD').value = dOdds;
+  document.getElementById('oA').value = aOdds;
+  switchTab('analyze');
+  alert('✅ 已加载 ' + home + ' vs ' + away);
+}
+
+// ============================================================
+// 核心分析
+// ============================================================
+let currentAnalysis = null;
+
+async function analyze() {
+  const league = document.getElementById('league').value;
+  const xgH = parseFloat(document.getElementById('xgH').value) || 1.2;
+  const xgA = parseFloat(document.getElementById('xgA').value) || 1.0;
+  const formH = parseFloat(document.getElementById('formH').value) || 1.0;
+  const formA = parseFloat(document.getElementById('formA').value) || 1.0;
+  const odds = parseFloat(document.getElementById('oH').value) || 1.85;
+  const pin = parseFloat(document.getElementById('pinH').value) || 1.83;
+  const bf = parseFloat(document.getElementById('bfIdx').value) || 50;
+  const bankroll = parseFloat(document.getElementById('bankroll').value) || 10000;
+  const maxRisk = parseFloat(document.getElementById('maxRisk').value) || 2;
+  const drawBoost = parseFloat(document.getElementById('cfgDrawBoost').value) || 1.08;
+  const kellyFrac = parseFloat(document.getElementById('cfgKellyFrac').value) || 0.5;
+  const home = document.getElementById('home').value || '主队';
+  const away = document.getElementById('away').value || '客队';
+  const date = document.getElementById('matchDate').value;
+
+  // 天气
+  const stadium = STADIUMS[home];
+  if (stadium && date) {
+    const w = await fetchWeather(stadium.lat, stadium.lon, date);
+    if (w) {
+      document.getElementById('weatherInfo').innerHTML = `☀️ ${w.temp}°C 风${w.wind}km/h ${w.rainy ? '🌧️' : ''}`;
+    }
+  }
+
+  const lp = LEAGUE_PARAMS[league] || LEAGUE_PARAMS.OTHER;
+  const adjH = Math.max(0.1, xgH * formH + lp.homeAdv * 0.3);
+  const adjA = Math.max(0.1, xgA * formA);
+  const scale = lp.avgGoals / 2.65;
+  const lambdaH = adjH * scale;
+  const lambdaA = adjA * scale;
+
+  let probs = calcMatchProbs(lambdaH, lambdaA, drawBoost);
+  const isCalibrated = ['EPL', 'BUNDES'].includes(league);
+  if (isCalibrated) {
+    const cal = calibrate(league, probs.H);
+    const ratio = (1 - cal) / (1 - probs.H);
+    probs = { H: cal, D: probs.D * ratio, A: probs.A * ratio };
+    const total = probs.H + probs.D + probs.A;
+    probs = { H: probs.H / total, D: probs.D / total, A: probs.A / total };
+  }
+
+  // 大小球
+  const ouProbs = calcTotalProbs(lambdaH, lambdaA);
+  const ouLine = parseFloat(document.getElementById('ouLine').value) || 2.5;
+  let underProb = 0;
+  for (let k = 0; k <= Math.floor(ouLine) && k < ouProbs.length; k++) underProb += ouProbs[k];
+  const overProb = 1 - underProb;
+  document.getElementById('expectedGoals').textContent = (lambdaH + lambdaA).toFixed(2);
+  document.getElementById('underBar').style.width = (underProb * 100) + '%';
+  document.getElementById('underBar').textContent = (underProb * 100).toFixed(0) + '%';
+  document.getElementById('overBar').style.width = (overProb * 100) + '%';
+  document.getElementById('overBar').textContent = (overProb * 100).toFixed(0) + '%';
+  document.getElementById('ouProbLabel').textContent = (underProb * 100).toFixed(0) + '% / ' + (overProb * 100).toFixed(0) + '%';
+
+  const overOdds = parseFloat(document.getElementById('ouOverOdds').value) || 1.8;
+  const underOdds = parseFloat(document.getElementById('ouUnderOdds').value) || 2.05;
+  const overEv = overOdds > 0 ? overProb * (overOdds - 1) - (1 - overProb) : 0;
+  const underEv = underOdds > 0 ? underProb * (underOdds - 1) - (1 - underProb) : 0;
+  document.getElementById('ouOverEv').textContent = (overEv * 100).toFixed(1) + '%';
+  document.getElementById('ouOverEv').className = 'metric-value ' + (overEv > 0 ? 'green' : 'red');
+  document.getElementById('ouUnderEv').textContent = (underEv * 100).toFixed(1) + '%';
+  document.getElementById('ouUnderEv').className = 'metric-value ' + (underEv > 0 ? 'green' : 'red');
+
+  // EV / CLV / 置信度
+  const ev = probs.H * (odds - 1) - (1 - probs.H);
+  const clv = pin > 0 ? (odds - pin) / pin * 100 : 0;
+  const conf = Math.round(50 + (probs.H - 0.35) * 120 + (ev > 0 ? 10 : -5) + (clv > 0 ? 5 : -5));
+  const finalConf = Math.max(30, Math.min(95, conf));
+  const canBet = probs.H > 0.45 && ev > 0.01 && finalConf > 50;
+
+  let verdict, vClass;
+  if (canBet && finalConf > 70) { verdict = '✅ 强上盘'; vClass = 'verdict-go'; } 
+  else if (canBet) { verdict = '✅ 上盘'; vClass = 'verdict-go'; } 
+  else if (finalConf > 45) { verdict = '⚠️ 观望'; vClass = 'verdict-warn'; } 
+  else { verdict = '❌ 放弃'; vClass = 'verdict-no'; }
+
+  // 凯利
+  let kellyPct = 0;
+  if (odds > 1 && probs.H > 0) {
+    const b = odds - 1;
+    const p = probs.H;
+    const q = 1 - p;
+    kellyPct = Math.max(0, (b * p - q) / b * kellyFrac);
+    kellyPct = Math.min(kellyPct, maxRisk / 100) * 100;
+  }
+  const stake = bankroll > 0 ? Math.round(bankroll * kellyPct / 100) : 0;
+
+  // 渲染结果
+  const area = document.getElementById('resultArea');
+  area.classList.add('show');
+  document.getElementById('verdictText').textContent = verdict;
+  document.getElementById('verdictText').className = 'verdict-big ' + vClass;
+  document.getElementById('confBar').style.width = finalConf + '%';
+  document.getElementById('confBar').style.background = finalConf >= 70 ? '#22c55e' : finalConf >= 50 ? '#eab308' : '#ef4444';
+  document.getElementById('confText').textContent = '置信度 ' + finalConf + '%';
+
+  document.getElementById('probBar').innerHTML =
+    '<div class="prob-h" style="width:' + (probs.H * 100) + '%">' + (probs.H * 100).toFixed(0) + '%</div>' +
+    '<div class="prob-d" style="width:' + (probs.D * 100) + '%">' + (probs.D * 100).toFixed(0) + '%</div>' +
+    '<div class="prob-a" style="width:' + (probs.A * 100) + '%">' + (probs.A * 100).toFixed(0) + '%</div>';
+  document.getElementById('probH').textContent = '主胜 ' + (probs.H * 100).toFixed(1) + '%';
+  document.getElementById('probD').textContent = '平局 ' + (probs.D * 100).toFixed(1) + '%';
+  document.getElementById('probA').textContent = '客胜 ' + (probs.A * 100).toFixed(1) + '%';
+
+  document.getElementById('calibrationStatus').textContent = isCalibrated ? '✅ 已校准' : '⚪ 未校准';
+  document.getElementById('calibrationRow').style.border = isCalibrated ? '1px solid #22c55e30' : '1px solid #47556930';
+  document.getElementById('calibrationDetail').textContent = isCalibrated ? '英超/德甲专用' : '仅支持英超/德甲';
+
+  document.getElementById('mXgDiff').textContent = (adjH - adjA >= 0 ? '+' : '') + (adjH - adjA).toFixed(2);
+  document.getElementById('mXgDiff').className = 'metric-value ' + (adjH - adjA > 0.5 ? 'green' : 'yellow');
+  document.getElementById('mEv').textContent = (ev * 100 >= 0 ? '+' : '') + (ev * 100).toFixed(1) + '%';
+  document.getElementById('mEv').className = 'metric-value ' + (ev > 0 ? 'green' : 'red');
+  document.getElementById('mClv').textContent = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
+  document.getElementById('mClv').className = 'metric-value ' + (clv > 0 ? 'green' : 'red');
+  document.getElementById('kellyVal').textContent = kellyPct.toFixed(2) + '%';
+  document.getElementById('kellyAmount').textContent = stake > 0 ? '建议 ¥' + stake.toLocaleString() : '';
+  document.getElementById('settleRow').style.display = canBet ? 'flex' : 'none';
+
+  // 信号列表
+  const signals = [];
+  if (adjH - adjA > 0.5) signals.push({ text: 'xG优势', good: true });
+  if (ev > 0.03) signals.push({ text: '正EV', good: true });
+  if (clv > 2) signals.push({ text: '正CLV', good: true });
+  if (bf > 60) signals.push({ text: '必发主力', good: true });
+  if (overEv > 0.02 && overProb > 0.55) signals.push({ text: '大球价值', good: true });
+  document.getElementById('signalList').innerHTML = signals.map(s =>
+    '<div class="signal-item"><div class="signal-dot ' + (s.good ? 'dot-green' : 'dot-yellow') + '"></div><span>' + s.text + '</span></div>'
+  ).join('') || '<div class="signal-item"><div class="signal-dot dot-yellow"></div><span>信号不足</span></div>';
+
+  currentAnalysis = { league, home, away, odds, ev: ev * 100, clv, confidence: finalConf, kellyPct, stakeAmount: stake, canBet, probs, time: Date.now() };
+  area.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ============================================================
+// 结算 + 战绩
+// ============================================================
+function settle(result) {
+  if (!currentAnalysis) { alert('请先分析'); return; }
+  const rec = { ...currentAnalysis, result };
+  if (result === 'D') { rec.hit = null; rec.pnl = 0; } 
+  else { rec.hit = rec.canBet && result === 'H'; rec.pnl = rec.hit ? rec.stakeAmount * (rec.odds - 1) : -rec.stakeAmount; }
+  const records = JSON.parse(localStorage.getItem('records') || '[]');
+  records.push(rec);
+  localStorage.setItem('records', JSON.stringify(records));
+  alert(rec.hit ? '✅ 命中 +¥' + rec.pnl.toFixed(0) : '❌ 未中 -¥' + Math.abs(rec.pnl).toFixed(0));
+  document.getElementById('resultArea').classList.remove('show');
+  currentAnalysis = null;
+  renderRecords();
+}
+
+function renderRecords() {
+  const records = JSON.parse(localStorage.getItem('records') || '[]');
+  const total = records.length;
+  const wins = records.filter(r => r.hit === true).length;
+  const losses = records.filter(r => r.hit === false).length;
+  const pnl = records.reduce((s, r) => s + (r.pnl || 0), 0);
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('sWin').textContent = wins;
+  document.getElementById('sLose').textContent = losses;
+  document.getElementById('sWR').textContent = total ? (wins / (wins + losses) * 100).toFixed(1) + '%' : '0%';
+  document.getElementById('sPnl').textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
+  document.getElementById('sPnl').style.color = pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : '#eab308';
+
+  const listEl = document.getElementById('historyList');
+  if (!records.length) { listEl.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  listEl.innerHTML = records.slice(-20).reverse().map(r => {
+    const tag = r.hit === true ? '<span class="tag tag-go">命中</span>' : r.hit === false ? '<span class="tag tag-no">未中</span>' : '<span class="tag" style="background:#eab30820;color:#eab308;">走水</span>';
+    return `<div class="history-item"><div class="history-top"><div><b>${r.home}</b> vs <b>${r.away}</b> ${tag}</div><div style="color:${r.pnl > 0 ? '#22c55e' : r.pnl < 0 ? '#ef4444' : '#eab308'};font-weight:700;">${r.pnl >= 0 ? '+' : ''}${r.pnl.toFixed(0)}</div></div><div class="history-mid">${new Date(r.time).toLocaleDateString()} · 置信${r.confidence}% · EV ${r.ev.toFixed(1)}%</div></div>`;
+  }).join('');
+}
+
+function clearRecords() {
+  if (confirm('确定清空所有记录？')) {
+    localStorage.removeItem('records');
+    renderRecords();
+    alert('已清空');
+  }
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  renderRecords();
+  const home = document.getElementById('home').value;
+  const date = document.getElementById('matchDate').value;
+  const stadium = STADIUMS[home];
+  if (stadium && date) {
+    fetchWeather(stadium.lat, stadium.lon, date).then(w => {
+      if (w) document.getElementById('weatherInfo').innerHTML = `☀️ ${w.temp}°C 风${w.wind}km/h ${w.rainy ? '🌧️' : ''}`;
+    });
+  }
+});
+</script>
+</body>
+</html>
